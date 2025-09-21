@@ -1,0 +1,290 @@
+// Quiz questions and answers
+const questions = [
+    { question: "1. Which is the largest desert in the world?", options: ["Thar Desert", "Sahara Desert", "Kalahari Desert", "Gobi Desert"], answer: "Sahara Desert" },
+    { question: "2. Who invented the light bulb?", options: ["Alexander Graham Bell", "Thomas Alva Edison", "James Watt", "Albert Einstein"], answer: "Thomas Alva Edison" },
+    { question: "3. Which is the longest river in India?", options: ["Ganga", "Yamuna", "Brahmaputra", "Godavari"], answer: "Ganga" },
+    { question: "4. Which is the highest mountain peak in the world?", options: ["Kanchenjunga", "K2", "Mount Everest", "Nanda Devi"], answer: "Mount Everest" },
+    { question: "5. Who is known as the \"Missile Man of India\"?", options: ["Homi Bhabha", "A.P.J. Abdul Kalam", "Vikram Sarabhai", "C.V. Raman"], answer: "A.P.J. Abdul Kalam" },
+    { question: "6. What is the currency of Japan?", options: ["Yen", "Yuan", "Dollar", "Won"], answer: "Yen" },
+    { question: "7. Which gas do plants release during photosynthesis?", options: ["Carbon dioxide", "Nitrogen", "Oxygen", "Hydrogen"], answer: "Oxygen" },
+    { question: "8. Who was the first woman President of India?", options: ["Sarojini Naidu", "Indira Gandhi", "Pratibha Patil", "Sonia Gandhi"], answer: "Pratibha Patil" },
+    { question: "9. Which is the national aquatic animal of India?", options: ["Dolphin", "Crocodile", "Whale", "Shark"], answer: "Dolphin" },
+    { question: "10. Who discovered gravity when an apple fell from a tree?", options: ["Galileo Galilei", "Albert Einstein", "Isaac Newton", "Charles Darwin"], answer: "Isaac Newton" },
+    { question: "11. Which Mughal Emperor built the Taj Mahal?", options: ["Akbar", "Aurangzeb", "Shah Jahan", "Humayun"], answer: "Shah Jahan" },
+    { question: "12. Which Indian city is called the “Pink City”?", options: ["Jaipur", "Jodhpur", "Udaipur", "Bikaner"], answer: "Jaipur" },
+    { question: "13. Who was the first Indian woman to go to space?", options: ["Sunita Williams", "Kalpana Chawla", "Indira Gandhi", "Sarojini Naidu"], answer: "Kalpana Chawla" },
+    { question: "14. Which state of India is known as the \"Land of Rising Sun\"?", options: ["Sikkim", "Arunachal Pradesh", "Assam", "Manipur"], answer: "Arunachal Pradesh" },
+    { question: "15. Which planet has the most moons?", options: ["Earth", "Jupiter", "Saturn", "Neptune"], answer: "Saturn" },
+    { question: "16. Who is the author of the book Discovery of India?", options: ["Rabindranath Tagore", "Mahatma Gandhi", "Jawaharlal Nehru", "Subhash Chandra Bose"], answer: "Jawaharlal Nehru" },
+    { question: "17. What is the study of earthquakes called?", options: ["Geology", "Seismology", "Astrology", "Meteorology"], answer: "Seismology" },
+    { question: "18. Which was the first satellite launched by India?", options: ["INSAT-1A", "Aryabhata", "Bhaskara", "Rohini"], answer: "Aryabhata" },
+    { question: "19. Who gave the slogan “Jai Jawan, Jai Kisan”?", options: ["Mahatma Gandhi", "Lal Bahadur Shastri", "Jawaharlal Nehru", "Subhash Chandra Bose"], answer: "Lal Bahadur Shastri" },
+    { question: "20. What is the official language of Bhutan?", options: ["Hindi", "Dzongkha", "Nepali", "Tibetan"], answer: "Dzongkha" }
+];
+
+// DOM element references
+const introScreen = document.getElementById('intro-screen');
+const quizScreen = document.getElementById('quiz-screen');
+const resultScreen = document.getElementById('result-screen');
+const nameForm = document.getElementById('name-form');
+const userNameInput = document.getElementById('name');
+const questionElement = document.getElementById('question');
+const optionsContainer = document.getElementById('options-container');
+const nextBtn = document.getElementById('next-btn');
+const skipBtn = document.getElementById('skip-btn');
+const submitBtn = document.getElementById('submit-btn');
+const timerFill = document.getElementById('timer-fill');
+const timerText = document.getElementById('timer-text');
+const scoreDisplay = document.getElementById('score-display');
+const performanceMessage = document.getElementById('performance-message');
+const pieChartCanvas = document.getElementById('pieChart');
+const answersReview = document.getElementById('answers-review');
+const restartBtn = document.getElementById('restart-btn');
+
+// Quiz state variables
+let currentQuestionIndex = 0;
+let userAnswers = new Array(questions.length).fill(null);
+let score = 0;
+let questionTimer;
+let timeLeft = 10;
+let userName = '';
+let quizOver = false;
+
+// Google Form Details - **IMPORTANT: REPLACE THESE WITH YOUR FORM'S ENTRY IDs**
+const googleFormActionUrl = "https://docs.google.com/forms/d/e/1FAIpQLSeNH3Ec9SKehJLS_AMy5wRQNagRHghV3uF3ZVOir3jrFPIE1g/formResponse";
+// Based on the provided image and a sample form, these are likely the entry IDs.
+// Please verify them by inspecting your Google Form.
+const nameEntryId = 'entry.1018610583';
+const scoreEntryId = 'entry.1466088924';
+
+// Start Quiz and timer
+nameForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    userName = userNameInput.value.trim();
+    if (userName) {
+        introScreen.style.display = 'none';
+        quizScreen.style.display = 'block';
+        loadQuestion();
+    }
+});
+
+// Load a new question and start its timer
+function loadQuestion() {
+    resetQuestionTimer();
+    const currentQuestion = questions[currentQuestionIndex];
+    questionElement.textContent = currentQuestion.question;
+    optionsContainer.innerHTML = '';
+
+    currentQuestion.options.forEach(option => {
+        const button = document.createElement('button');
+        button.classList.add('option-btn');
+        button.textContent = option;
+        button.addEventListener('click', () => selectAnswer(option));
+
+        optionsContainer.appendChild(button);
+    });
+
+    // Highlight previously selected answer if it exists
+    const selectedAnswer = userAnswers[currentQuestionIndex];
+    if (selectedAnswer) {
+        const selectedBtn = Array.from(optionsContainer.children).find(btn => btn.textContent === selectedAnswer);
+        if (selectedBtn) {
+            selectedBtn.classList.add('selected');
+        }
+    }
+
+    updateNavigationButtons();
+}
+
+// Handle answer selection
+function selectAnswer(option) {
+    // Disable all option buttons after a selection is made
+    document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+    userAnswers[currentQuestionIndex] = option;
+    
+    // Visually mark the selected option
+    const selectedBtn = Array.from(optionsContainer.children).find(btn => btn.textContent === option);
+    if (selectedBtn) {
+        selectedBtn.classList.add('selected');
+    }
+
+    clearInterval(questionTimer);
+}
+
+// Reset timer for a new question
+function resetQuestionTimer() {
+    clearInterval(questionTimer);
+    timeLeft = 10;
+    timerText.textContent = `${timeLeft}s`;
+    timerFill.style.width = '100%';
+    timerFill.style.backgroundColor = '#28a745';
+    timerFill.style.transition = `width 10s linear`;
+    
+    // Start the timer countdown
+    questionTimer = setInterval(() => {
+        timeLeft--;
+        timerText.textContent = `${timeLeft}s`;
+        if (timeLeft <= 3) {
+            timerFill.style.backgroundColor = '#dc3545';
+        }
+        if (timeLeft <= 0) {
+            clearInterval(questionTimer);
+            // Auto-move to the next question if time runs out
+            handleNextQuestion();
+        }
+    }, 1000);
+}
+
+// Update navigation button visibility
+function updateNavigationButtons() {
+    if (currentQuestionIndex === questions.length - 1) {
+        nextBtn.style.display = 'none';
+        skipBtn.style.display = 'none';
+        submitBtn.style.display = 'inline-block';
+    } else {
+        nextBtn.style.display = 'inline-block';
+        skipBtn.style.display = 'inline-block';
+        submitBtn.style.display = 'none';
+    }
+}
+
+// Handle Next/Skip button clicks
+function handleNextQuestion() {
+    clearInterval(questionTimer);
+    if (currentQuestionIndex < questions.length - 1) {
+        currentQuestionIndex++;
+        loadQuestion();
+    }
+}
+
+nextBtn.addEventListener('click', handleNextQuestion);
+skipBtn.addEventListener('click', handleNextQuestion);
+
+// Submit the quiz
+submitBtn.addEventListener('click', () => {
+    if (quizOver) return;
+    quizOver = true;
+    clearInterval(questionTimer);
+    calculateScore();
+    showResults();
+    submitToGoogleForm();
+});
+
+// Calculate the final score
+function calculateScore() {
+    score = 0;
+    userAnswers.forEach((answer, index) => {
+        if (answer && answer === questions[index].answer) {
+            score++;
+        }
+    });
+}
+
+// Display results and performance
+function showResults() {
+    quizScreen.style.display = 'none';
+    resultScreen.style.display = 'flex';
+    document.body.style.overflowY = 'auto'; // Allow scrolling on results screen
+
+    scoreDisplay.textContent = `${score} / ${questions.length}`;
+    
+    let message = '';
+    if (score <= 10) {
+        message = 'Very bad performance';
+    } else if (score >= 11 && score <= 15) {
+        message = 'Good performance';
+    } else {
+        message = 'Very good performance';
+    }
+    performanceMessage.textContent = message;
+
+    const correct = score;
+    const incorrect = questions.length - score;
+    
+    // Create the pie chart
+    new Chart(pieChartCanvas, {
+        type: 'pie',
+        data: {
+            labels: ['Correct', 'Incorrect'],
+            datasets: [{
+                data: [correct, incorrect],
+                backgroundColor: ['#28a745', '#dc3545'],
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            return `${label}: ${value}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Review each question's answer
+    answersReview.innerHTML = '';
+    questions.forEach((q, index) => {
+        const userAns = userAnswers[index];
+        const correctAns = q.answer;
+        const isCorrect = userAns === correctAns;
+        const isSkipped = userAns === null;
+
+        const reviewItem = document.createElement('div');
+        reviewItem.classList.add('review-item');
+        
+        const questionText = document.createElement('p');
+        questionText.classList.add('question-text');
+        questionText.innerHTML = `<strong>${q.question}</strong>`;
+
+        const yourAnswer = document.createElement('p');
+        yourAnswer.classList.add('user-answer-text');
+        yourAnswer.innerHTML = `<span class="your-answer-label">Your Answer:</span> <span class="user-answer-highlight">${isSkipped ? 'Skipped' : userAns}</span>`;
+
+        const correctAnswer = document.createElement('p');
+        correctAnswer.classList.add('correct-answer-text');
+        correctAnswer.innerHTML = `<span class="correct-answer-label">Correct Answer:</span> <span class="correct-answer-highlight">${correctAns}</span>`;
+
+        // Apply blue/red highlights
+        if (isCorrect) {
+            yourAnswer.querySelector('.user-answer-highlight').style.color = 'blue';
+            reviewItem.style.borderLeft = '4px solid blue'; // Blue bar on correct
+        } else {
+            yourAnswer.querySelector('.user-answer-highlight').style.color = 'red';
+            reviewItem.style.borderLeft = '4px solid red'; // Red bar on incorrect
+        }
+
+        reviewItem.appendChild(questionText);
+        reviewItem.appendChild(yourAnswer);
+        reviewItem.appendChild(correctAnswer);
+        
+        answersReview.appendChild(reviewItem);
+    });
+}
+
+// Submit data to Google Form using Fetch API
+function submitToGoogleForm() {
+    const formData = new FormData();
+    formData.append(nameEntryId, userName);
+    formData.append(scoreEntryId, score);
+
+    fetch(googleFormActionUrl, {
+        method: 'POST',
+        body: new URLSearchParams(formData),
+        mode: 'no-cors'
+    }).then(() => {
+        console.log('Data successfully submitted to Google Form.');
+    }).catch(error => {
+        console.error('Error submitting to Google Form:', error);
+    });
+}
+
+// Restart Quiz by reloading the page
+restartBtn.addEventListener('click', () => {
+    location.reload();
+});
